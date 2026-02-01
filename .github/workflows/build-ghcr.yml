@@ -1,4 +1,4 @@
-name: Build and Push vLLM Image (Multi-Arch)
+name: Build and Push vLLM Image
 
 on:
   push:
@@ -12,21 +12,16 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout repo
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Enable QEMU for multi-arch builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 3. Enable Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. Login to GitHub Container Registry (GHCR)
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -34,18 +29,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 5. Build + Push Multi-Arch Image
-      - name: Build and Push Image (amd64 + arm64)
+      # IMPORTANT: GHCR image names must be lowercase.
+      # Your GitHub owner is "KuolThomas" (has uppercase), so we hardcode lowercase.
+      - name: Build and push (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
-
-          # ✅ THIS IS THE KEY FIX FOR RUNPOD
           platforms: linux/amd64,linux/arm64
-
-          # ✅ Tag pushed image
-          tags: ghcr.io/${{ github.repository_owner }}/spoonapp-vllm:latest
-
-          # ✅ Prevent RunPod "unknown manifest" bug
+          push: true
           provenance: false
+          tags: ghcr.io/kuolthomas/spoonapp-vllm:latest
