@@ -12,6 +12,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # Some repos/orgs require job-level permissions too
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,9 +34,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          # If GITHUB_TOKEN keeps failing, switch to:
+          # password: ${{ secrets.GHCR_PAT }}
 
-      # IMPORTANT: GHCR image names must be lowercase.
-      # Your GitHub owner is "KuolThomas" (has uppercase), so we hardcode lowercase.
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@v6
         with:
@@ -38,4 +44,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           provenance: false
-          tags: ghcr.io/kuolthomas/spoonapp-vllm:latest
+          tags: ghcr.io/${{ github.repository_owner }}/spoonapp-vllm:latest
