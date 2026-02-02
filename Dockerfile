@@ -35,7 +35,8 @@ PY
 
 WORKDIR /workspace
 
-# Notes:
-# - /workspace/models/llama-3.1-8b-instruct must exist at runtime (volume or download step).
-# - If vLLM crashes, keep container alive so SSH doesn’t instantly drop.
-CMD ["bash", "-lc", "python3 -m vllm.entrypoints.openai.api_server --host 0.0.0.0 --port 8000 --model /workspace/models/llama-3.1-8b-instruct --dtype auto --max-model-len 8192 || (echo 'vLLM crashed; keeping container alive for debugging' && tail -f /dev/null)"]
+# Copy entrypoint (downloads model if needed + starts vLLM)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
