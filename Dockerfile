@@ -1,15 +1,21 @@
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
+# System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Python deps (pin for vLLM 0.5.5 compatibility)
+# - transformers/tokenizers pin fixes: AttributeError: *Tokenizer has no attribute all_special_tokens_extended
+# - outlines pin kept
+# - pyairports added + stubbed because outlines sometimes expects it but pip install can be weird
 RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install \
+    python3 -m pip install --no-cache-dir \
       "vllm==0.5.5" \
       "outlines==0.0.46" \
-      "huggingface_hub>=0.23.0" \
-      "transformers>=4.44.0" \
+      "transformers==4.46.3" \
+      "tokenizers==0.20.3" \
+      "huggingface_hub>=0.26.0" \
       "accelerate>=0.33.0" \
       "pyairports==0.0.1"
 
@@ -19,13 +25,17 @@ import os, site
 sp = site.getsitepackages()[0]
 pkg = os.path.join(sp, "pyairports")
 os.makedirs(pkg, exist_ok=True)
-open(os.path.join(pkg, "__init__.py"), "w").write("# stub\n")
-open(os.path.join(pkg, "airports.py"), "w").write("AIRPORT_LIST = []\n")
+with open(os.path.join(pkg, "__init__.py"), "w") as f:
+    f.write("# stub package for outlines dependency\n")
+with open(os.path.join(pkg, "airports.py"), "w") as f:
+    f.write("AIRPORT_LIST = []\n")
 print("Ensured pyairports module exists at:", pkg)
 PY
 # -------------------------------------------------------------------------------
 
 WORKDIR /workspace
 
-# Keep container alive if vLLM fails (prevents RunPod from instantly killing SSH)
+# Notes:
+# - /workspace/models/llama-3.1-8b-instruct must exist at runtime (volume or download step).
+# - If vLLM crashes, keep container alive so SSH doesn’t instantly drop.
 CMD ["bash", "-lc", "python3 -m vllm.entrypoints.openai.api_server --host 0.0.0.0 --port 8000 --model /workspace/models/llama-3.1-8b-instruct --dtype auto --max-model-len 8192 || (echo 'vLLM crashed; keeping container alive for debugging' && tail -f /dev/null)"]
